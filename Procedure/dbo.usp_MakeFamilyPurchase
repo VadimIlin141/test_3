@@ -1,0 +1,40 @@
+create procedure usp_MakeFamilyPurchase
+	@FamilySurName varchar(255)
+as
+begin
+ 
+	-- Объявление переменных для хранения суммы покупок и для хранения ID семьи
+	declare 
+		@TotalBasketValue decimal(18, 2)
+		,@FamilyID int
+ 
+	-- Проверка существования семьи с переданной фамилией
+	if not exists (
+		select 1 
+		from dbo.Family 
+		where SurName = @FamilySurName
+	)
+	begin
+		raiserror('Семья с фамилией %s не найдена.', 16, 1, @FamilySurName)
+ 
+		return
+	end
+ 
+	-- Получаем ID семьи по фамилии
+	select @FamilyID = ID
+	from dbo.Family
+	where SurName = @FamilySurName
+ 
+	-- Вычисляем общую сумму значений из корзины для данной семьи
+	select @TotalBasketValue = sum(Value)
+	from dbo.Basket
+	where ID_Family = @FamilySurName
+ 
+	-- Обновляем BudgetValue в таблице Family
+	update f
+	-- Используем ISNULL для обработки случая, если корзина пуста
+	set BudgetValue = BudgetValue - ISNULL(@TotalBasketValue, 0)
+	from dbo.Family f
+	where SurName = @FamilySurName
+ 
+end
